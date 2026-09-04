@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BillCalc</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A1%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@700;800;900&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --bg:#F6F3EC;
+    --surface:#FFFFFF;
+    --surface-2:#F0EBDF;
+    --ink:#1B211D;
+    --ink-muted:#666F68;
+    --ink-faint:#93998F;
+    --border:#DADCE0;
+    --border-strong:#C3C7CC;
+    --accent:#C6841A;
+    --accent-ink:#5C3B0A;
+    --accent-soft:#FBEAC8;
+    --accent2:#1B6E74;
+    --accent2-soft:#DCEEEC;
+    --positive:#2E7D50;
+    --positive-soft:#E1F1E5;
+    --shadow: 28 30 25;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:9px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181A;
+      --surface:#1C2224;
+      --surface-2:#222A2B;
+      --ink:#EDEAE1;
+      --ink-muted:#9EA8A1;
+      --ink-faint:#6C7671;
+      --border:#2B3335;
+      --border-strong:#3A4345;
+      --accent:#EFB74A;
+      --accent-ink:#2A1D08;
+      --accent-soft:#3A2B0E;
+      --accent2:#54BAC0;
+      --accent2-soft:#17383A;
+      --positive:#57C088;
+      --positive-soft:#153826;
+      --shadow: 0 0 0;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181A;
+    --surface:#1C2224;
+    --surface-2:#222A2B;
+    --ink:#EDEAE1;
+    --ink-muted:#9EA8A1;
+    --ink-faint:#6C7671;
+    --border:#2B3335;
+    --border-strong:#3A4345;
+    --accent:#EFB74A;
+    --accent-ink:#2A1D08;
+    --accent-soft:#3A2B0E;
+    --accent2:#54BAC0;
+    --accent2-soft:#17383A;
+    --positive:#57C088;
+    --positive-soft:#153826;
+    --shadow: 0 0 0;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:46px 20px 80px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:22px;}
+
+  /* ---------- header ---------- */
+  header.page{
+    display:flex;flex-direction:column;gap:7px;
+    padding:0 4px 2px;
+    margin-bottom:-8px;
+  }
+  .eyebrow{
+    font-family:"Gothic A1","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:12.5px;letter-spacing:.04em;
+    color:var(--accent2);font-weight:700;
+  }
+  h1{
+    font-family:"Gothic A1","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-weight:900;
+    font-size:clamp(26px,4vw,36px);
+    margin:0;
+    letter-spacing:-.01em;
+    text-wrap:balance;
+  }
+  .sub{color:var(--ink-muted);font-size:14.5px;max-width:none;}
+
+  /* ---------- card ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:22px 24px;
+    box-shadow:0 1px 2px rgba(var(--shadow)/0.05), 0 8px 24px -16px rgba(var(--shadow)/0.35);
+  }
+  .card h2{
+    font-family:"Gothic A1","Apple SD Gothic Neo",sans-serif;
+    font-size:16.5px;font-weight:800;margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .card .desc{color:var(--ink-muted);font-size:13px;margin:0 0 16px;}
+  .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px;}
+
+  /* ---------- top title row + save button ---------- */
+  .title-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .save-emoji{
+    appearance:none;border:none;background:none;padding:0;margin:0;
+    font-size:clamp(24px,3.4vw,32px);line-height:1;
+    cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+    filter:grayscale(45%) opacity(.7);
+    transition:filter .15s ease, transform .1s ease;
+  }
+  .save-emoji:hover{filter:none;transform:scale(1.08);}
+  .save-emoji:active{transform:scale(.9);}
+  .save-emoji.dirty{
+    filter:none;
+    animation:save-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes save-pulse{
+    0%,100%{transform:scale(1);}
+    50%{transform:scale(1.16);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .save-emoji.dirty{animation:none;}
+  }
+
+  /* ---------- theme color popover ---------- */
+  .save-emoji-wrap{position:relative;display:inline-flex;align-items:center;}
+  .cloud-status{
+    position:absolute;left:0;top:100%;
+    font-size:10.5px;color:var(--ink-faint);margin-top:4px;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .3s ease;
+  }
+  .cloud-status.show{opacity:1;}
+  .cloud-status.err{color:#B3261E;}
+  @media print{ .cloud-status{display:none !important;} }
+  .color-popover{
+    position:absolute;top:calc(100% + 10px);left:0;z-index:40;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    box-shadow:0 4px 10px rgba(var(--shadow)/0.08), 0 16px 36px -12px rgba(var(--shadow)/0.35);
+    padding:14px 16px 16px;min-width:220px;
+    display:none;
+  }
+  .color-popover.open{display:block;}
+  .color-popover-title{font-size:12.5px;font-weight:700;color:var(--ink-muted);margin-bottom:10px;}
+  .color-swatch-row{display:flex;gap:12px;flex-wrap:wrap;}
+  .color-swatch{
+    width:32px;height:32px;border-radius:50%;
+    border:2px solid var(--surface);
+    box-shadow:0 0 0 1.5px var(--border-strong);
+    cursor:pointer;padding:0;appearance:none;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .1s ease;
+  }
+  .color-swatch:hover{transform:scale(1.1);}
+  .color-swatch.selected{box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--ink);}
+  .color-swatch .check{color:#fff;font-size:14px;font-weight:900;opacity:0;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
+  .color-swatch.selected .check{opacity:1;}
+  .color-swatch-label{font-size:10px;color:var(--ink-faint);text-align:center;margin-top:4px;width:32px;}
+  .color-swatch-item{display:flex;flex-direction:column;align-items:center;}
+  @media print{ .color-popover{display:none !important;} }
+
+  /* ---------- hero result ---------- */
+  .hero{
+    background:linear-gradient(160deg, var(--accent-soft), var(--surface) 70%);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:26px 26px 24px;
+    display:grid;
+    grid-template-columns:1.3fr 1fr;
+    gap:20px;
+    box-shadow:0 1px 2px rgba(var(--shadow)/0.05), 0 8px 24px -16px rgba(var(--shadow)/0.35);
+  }
+  .hero-main{display:flex;flex-direction:column;gap:6px;justify-content:center;}
+  .hero-label{
+    font-family:"Gothic A1","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:12.5px;letter-spacing:.02em;
+    color:var(--accent-ink);
+    background:var(--accent-soft);
+    width:fit-content;padding:3px 9px;border-radius:99px;
+    font-weight:600;
+  }
+  .hero-plan-name{font-size:14.5px;color:var(--ink-muted);font-weight:500;}
+  .hero-value{
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+    font-size:clamp(40px,7vw,58px);
+    line-height:1;
+    color:var(--ink);
+    display:flex;align-items:baseline;gap:8px;
+  }
+  .hero-value small{font-size:20px;color:var(--ink-muted);font-weight:600;}
+  .hero-stats{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    align-content:center;
+  }
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-md);
+    padding:12px 14px;
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .stat .k{font-size:12px;color:var(--ink-muted);}
+  .stat .v{
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    font-variant-numeric:tabular-nums;
+    font-weight:600;font-size:18px;
+  }
+  .stat .v.positive{color:var(--positive);}
+
+  @media (max-width:680px){
+    .hero{grid-template-columns:1fr;}
+  }
+
+  /* ---------- form grid ---------- */
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;}
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field label{font-size:12.5px;color:var(--ink-muted);font-weight:600;}
+  .field .hint{font-size:11.5px;color:var(--ink-faint);}
+  select, input[type="number"], input[type="text"]{
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    font-size:14.5px;
+    color:var(--ink);
+    background:var(--accent-soft);
+    border:1px solid var(--border-strong);
+    border-radius:var(--radius-sm);
+    padding:9px 11px;
+    outline:none;
+    width:100%;
+  }
+  select{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    padding-right:34px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23666F68' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 8 10 13 15 8'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 10px center;
+    background-size:16px;
+  }
+  select::-ms-expand{display:none;}
+  input[type="number"]{
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    font-variant-numeric:tabular-nums;
+  }
+  select:focus, input:focus{
+    border-color:var(--accent2);
+    box-shadow:0 0 0 3px var(--accent2-soft);
+  }
+  .unit-input{position:relative;}
+  .unit-input input{padding-right:46px;}
+  .unit-input .unit{
+    position:absolute;right:11px;top:50%;transform:translateY(-50%);
+    font-size:12.5px;color:var(--ink-faint);pointer-events:none;
+  }
+
+  /* ---------- searchable select (검색 가능한 드롭다운) ---------- */
+  .ss-wrap{position:relative;}
+  .ss-wrap .ss-input{cursor:pointer;font-weight:700;font-size:18px;}
+  .ss-wrap.open .ss-input{border-color:var(--accent2);box-shadow:0 0 0 3px var(--accent2-soft);}
+  .ss-panel{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;
+    max-height:320px;overflow-y:auto;
+    background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);
+    box-shadow:0 4px 10px rgba(var(--shadow)/0.08), 0 16px 36px -12px rgba(var(--shadow)/0.35);
+    padding:6px;
+  }
+  .ss-panel.open{display:block;}
+  .ss-group-label{
+    font-size:11px;font-weight:700;color:var(--ink-faint);
+    padding:7px 9px 3px;letter-spacing:.02em;
+  }
+  .ss-option{
+    padding:9px 10px;border-radius:7px;cursor:pointer;font-size:15.5px;color:var(--ink);
+  }
+  .ss-option:hover, .ss-option.active{background:var(--accent2-soft);color:var(--accent2);}
+  .ss-empty{padding:14px 9px;font-size:13px;color:var(--ink-faint);text-align:center;}
+  @media print{ .ss-panel{display:none !important;} }
+
+  /* ---------- 요금제 단계별 선택 (종별 → 갑/을 → 유형) ---------- */
+  /* ---------- 요금제 2단 선택 패널 (왼쪽 카테고리 → 오른쪽 세부목록) ---------- */
+  .plan-dual-wrap{position:relative;}
+  .plan-dual-wrap .ss-input{cursor:pointer;}
+  .plan-dual-wrap.open .ss-input{border-color:var(--accent2);box-shadow:0 0 0 3px var(--accent2-soft);}
+  .plan-dual-panel{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;
+    background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);
+    box-shadow:0 4px 10px rgba(var(--shadow)/0.08), 0 16px 36px -12px rgba(var(--shadow)/0.35);
+    max-height:360px;overflow:hidden;
+  }
+  .plan-dual-panel.open{display:flex;}
+  .plan-dual-col{
+    flex:1 1 50%;min-width:0;overflow-y:auto;padding:6px;
+  }
+  .plan-dual-col + .plan-dual-col{border-left:1px solid var(--border);}
+  .plan-dual-item{
+    padding:9px 10px;border-radius:7px;cursor:pointer;font-size:13.5px;color:var(--ink);
+    line-height:1.35;
+  }
+  .plan-dual-item .note{display:block;font-size:11px;color:var(--ink-faint);font-weight:600;margin-top:1px;}
+  .plan-dual-item:hover, .plan-dual-item.hovered{background:var(--accent2-soft);color:var(--accent2);}
+  .plan-dual-item.selected{background:var(--accent2);color:var(--surface);}
+  .plan-dual-item.selected .note{color:var(--surface);opacity:.85;}
+  @media print{ .plan-dual-panel{display:none !important;} }
+
+  /* ---------- 요금제 전체표 검색/정렬 ---------- */
+  .plan-table-toolbar{margin-bottom:10px;}
+  .plan-table-toolbar input{max-width:280px;}
+  th.sortable{cursor:pointer;user-select:none;white-space:nowrap;}
+  th.sortable:hover{color:var(--accent2);}
+  th.sortable .sort-icon{font-size:10px;margin-left:3px;opacity:.7;}
+
+  /* ---------- hover/focus tooltip (설명글은 마우스오버시에만) ---------- */
+  .tooltip{
+    position:relative;cursor:help;
+    outline:none;
+  }
+  .tooltip::after{
+    content:attr(data-tooltip);
+    position:absolute;left:0;bottom:calc(100% + 9px);
+    width:300px;max-width:min(300px,80vw);
+    background:var(--ink);color:var(--bg);
+    font-size:12px;font-weight:500;line-height:1.55;
+    padding:10px 12px;border-radius:9px;
+    box-shadow:0 10px 26px -10px rgba(0,0,0,.45);
+    opacity:0;visibility:hidden;transform:translateY(4px);
+    transition:opacity .15s ease, transform .15s ease;
+    pointer-events:none;z-index:20;
+  }
+  .tooltip:hover::after, .tooltip:focus-visible::after{
+    opacity:1;visibility:visible;transform:translateY(0);
+  }
+
+  /* ---------- 계절/겨울 모드 전환 (박스 없이 체크표시만) ---------- */
+  .season-toggle{
+    display:inline-flex;align-items:center;gap:6px;
+    cursor:pointer;font-size:13px;font-weight:600;color:var(--ink-muted);
+  }
+  .season-toggle.tooltip{cursor:pointer;}
+  .season-toggle input{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
+  .season-check-mark{
+    color:var(--positive);font-size:14px;font-weight:900;line-height:1;
+  }
+  .season-toggle-label{border-bottom:1px dashed var(--ink-faint);}
+  .season-toggle input:focus-visible ~ .season-toggle-label{
+    outline:2px solid var(--positive);outline-offset:3px;border-radius:2px;
+  }
+
+  /* ---------- plan rate card ---------- */
+  .rate-row{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+  .rate-base-field{flex:0 0 160px;}
+  #rateEditor{flex:1 1 320px;min-width:0;}
+  .rate-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  }
+  @media (max-width:420px){ .rate-grid{grid-template-columns:1fr;} }
+  @media (max-width:560px){ .rate-row{flex-direction:column;} .rate-base-field{flex-basis:220px;} }
+  .rate-cell label{
+    font-size:11.5px;color:var(--ink-muted);font-weight:600;
+    display:flex;align-items:center;gap:5px;
+  }
+  .season-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;}
+  .season-dot.summer{background:#D9781B;}
+  .season-dot.sf{background:#3F8F5C;}
+  .season-dot.winter{background:#3E7FBF;}
+  .season-dot.base{background:var(--ink-faint);}
+
+  .type-pill{
+    font-family:"Gothic A1","Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    font-size:12px;letter-spacing:.01em;
+    background:var(--accent2-soft);color:var(--accent2);
+    padding:3px 9px;border-radius:99px;font-weight:700;
+  }
+  .rate-tou-table{width:100%;border-collapse:collapse;margin-top:4px;}
+  .rate-tou-table th{
+    font-size:11.5px;color:var(--ink-muted);font-weight:600;
+    text-align:center;padding:0 6px 8px;
+  }
+  .rate-tou-table th:first-child{text-align:left;}
+  .rate-tou-table td{padding:5px 6px;vertical-align:middle;}
+  .rate-tou-table td:first-child{
+    font-size:12.5px;font-weight:600;color:var(--ink-muted);
+    display:flex;align-items:center;gap:6px;white-space:nowrap;
+  }
+  .rate-tou-table input{
+    width:100%;text-align:right;padding:8px 9px;
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;font-variant-numeric:tabular-nums;
+    font-size:14px;color:var(--ink);background:var(--accent-soft);
+    border:1px solid var(--border-strong);border-radius:var(--radius-sm);
+  }
+  .tou-note{
+    font-size:12px;color:var(--ink-muted);
+    background:var(--accent-soft);border:1px solid var(--border);
+    border-radius:var(--radius-md);padding:10px 12px;margin-top:14px;
+  }
+
+  /* ---------- table ---------- */
+  .table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-md);}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px;}
+  table.wide{min-width:0;table-layout:fixed;font-size:11px;}
+  thead th{
+    position:sticky;top:0;
+    background:var(--accent-soft);
+    color:var(--ink-muted);
+    font-weight:600;font-size:12px;
+    text-align:right;
+    padding:9px 10px;
+    border-bottom:1px solid var(--border-strong);
+    white-space:nowrap;
+  }
+  thead th:first-child, tbody td:first-child{text-align:left;}
+  /* 두 표('월별 발전량', '시간대별 발전 패턴')의 '월' 열 글자 크기를 서로 맞춤 */
+  #monthlyTable thead th:first-child, #monthlyTable tbody td:first-child,
+  #patternTable thead th:first-child, #patternTable tbody td:first-child{
+    font-size:13px;
+  }
+  #monthlyTable{table-layout:fixed;}
+  #monthlyTable thead th:nth-child(1), #monthlyTable tbody td:nth-child(1){width:8%;}
+  #monthlyTable thead th:nth-child(2), #monthlyTable tbody td:nth-child(2){width:8%;}
+  #monthlyTable thead th:nth-child(3), #monthlyTable tbody td:nth-child(3){width:7%;}
+  #monthlyTable thead th:nth-child(4), #monthlyTable tbody td:nth-child(4){width:14%;}
+  #monthlyTable thead th:nth-child(5), #monthlyTable tbody td:nth-child(5){width:17%;}
+  #monthlyTable thead th:nth-child(6), #monthlyTable tbody td:nth-child(6){width:21%;}
+  #monthlyTable thead th:nth-child(7), #monthlyTable tbody td:nth-child(7){width:25%;}
+  #monthlyTable thead th:nth-child(1), #monthlyTable tbody td:nth-child(1),
+  #monthlyTable thead th:nth-child(2), #monthlyTable tbody td:nth-child(2),
+  #monthlyTable thead th:nth-child(3), #monthlyTable tbody td:nth-child(3),
+  #monthlyTable thead th:nth-child(4), #monthlyTable tbody td:nth-child(4),
+  #monthlyTable thead th:nth-child(5), #monthlyTable tbody td:nth-child(5),
+  #monthlyTable thead th:nth-child(6), #monthlyTable tbody td:nth-child(6),
+  #monthlyTable thead th:nth-child(7), #monthlyTable tbody td:nth-child(7),
+  #patternTable thead th:first-child, #patternTable tbody td:first-child{
+    text-align:center;
+  }
+  #monthlyTable thead th, #monthlyTable tbody td{
+    padding-left:14px;
+    padding-right:14px;
+  }
+  #patternTable thead th, #patternTable tbody td{
+    padding-left:6px;
+    padding-right:6px;
+    white-space:normal;
+  }
+  tbody td{
+    padding:8px 10px;
+    text-align:right;
+    border-bottom:1px solid var(--border);
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  tbody td:first-child{font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:600;color:var(--ink);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.total td{
+    font-weight:700;background:var(--accent-soft);
+  }
+  tbody tr.active-plan{background:var(--accent-soft);}
+  #planTable tbody tr:hover{background:var(--accent2-soft);}
+  .table-input{
+    width:64px;text-align:right;padding:4px 6px;border-radius:6px;
+    background:var(--surface);
+  }
+
+  /* ---------- accordion ---------- */
+  details.card{padding:0;}
+  details.card > summary{
+    list-style:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 24px;
+  }
+  details.card > summary::-webkit-details-marker{display:none;}
+  details.card > summary .chev{
+    transition:transform .15s ease;color:var(--ink-muted);
+    font-size:13px;
+  }
+  details.card[open] > summary .chev{transform:rotate(90deg);}
+  details.card > summary h2{margin:0;}
+  details.card .body{padding:0 24px 22px;}
+
+  /* ---------- page title = drawer trigger ---------- */
+  h1.title-trigger{
+    cursor:pointer;display:inline-flex;flex-wrap:wrap;align-items:baseline;
+    gap:10px;border-radius:10px;padding:2px 6px;margin:0 0 0 -6px;
+    transition:background .15s ease,color .15s ease;
+  }
+  h1.title-trigger:hover, h1.title-trigger:focus-visible{
+    background:var(--accent2-soft);color:var(--accent2);outline:none;
+  }
+  .title-trigger-hint{
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:600;font-size:12.5px;
+    color:var(--ink-muted);display:inline-flex;align-items:center;gap:5px;
+    white-space:nowrap;
+  }
+  h1.title-trigger:hover .title-trigger-hint,
+  h1.title-trigger:focus-visible .title-trigger-hint{color:var(--accent2);}
+  .title-trigger-hint .chev{font-size:11px;transition:transform .15s ease;}
+  h1.title-trigger.open .title-trigger-hint .chev{transform:rotate(90deg);}
+
+  /* ---------- left drawer (요금제 전체표) ---------- */
+  .drawer-backdrop{
+    position:fixed;inset:0;background:rgba(10,12,10,.45);
+    opacity:0;visibility:hidden;transition:opacity .2s ease;
+    z-index:55;
+  }
+  .drawer-backdrop.open{opacity:1;visibility:visible;}
+  .drawer{
+    position:fixed;top:0;left:0;height:100vh;height:100dvh;
+    width:var(--drawer-w, min(560px,92vw));
+    max-width:96vw;
+    background:var(--surface);
+    border-right:1px solid var(--border);
+    box-shadow:16px 0 40px -20px rgba(var(--shadow)/0.5);
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    z-index:60;
+    display:flex;flex-direction:column;
+  }
+  .drawer.open{transform:translateX(0);}
+  .drawer.resizing{transition:none;}
+  .drawer-resize-handle{
+    position:absolute;top:0;right:-5px;width:10px;height:100%;
+    cursor:col-resize;z-index:2;touch-action:none;
+  }
+  .drawer-resize-handle::after{
+    content:"";position:absolute;top:0;bottom:0;right:4px;width:2px;
+    background:transparent;transition:background .15s ease;border-radius:2px;
+  }
+  .drawer-resize-handle:hover::after,
+  .drawer-resize-handle.active::after{background:var(--accent2);}
+  body.drawer-resizing{cursor:col-resize !important;user-select:none;}
+  .drawer-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:18px 20px;border-bottom:1px solid var(--border);flex:0 0 auto;
+  }
+  .drawer-head h2{
+    font-family:"Gothic A1","Apple SD Gothic Neo",sans-serif;font-weight:800;font-size:15.5px;margin:0;
+  }
+  .drawer-close{
+    appearance:none;border:1px solid var(--border-strong);background:var(--accent-soft);
+    color:var(--ink-muted);border-radius:99px;width:30px;height:30px;
+    font-size:14px;cursor:pointer;flex:0 0 auto;
+  }
+  .drawer-close:hover{background:var(--accent-soft);color:var(--ink);}
+  .drawer-body{padding:18px 20px 28px;overflow-y:auto;flex:1 1 auto;}
+
+  .paste-import{
+    background:var(--accent-soft);border:1px solid var(--border);
+    border-radius:var(--radius-md);padding:14px 16px;margin:4px 0 18px;
+  }
+  .paste-import h3{
+    font-family:"Gothic A1","Apple SD Gothic Neo",sans-serif;font-size:13.5px;font-weight:800;margin:0 0 4px;
+  }
+  .paste-import textarea{
+    width:100%;font-family:"JetBrains Mono",monospace;font-size:12.5px;
+    color:var(--ink);background:var(--surface);border:1px solid var(--border-strong);
+    border-radius:var(--radius-sm);padding:9px 11px;resize:vertical;margin-top:10px;
+  }
+  .paste-actions{display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap;}
+  .btn-primary{
+    appearance:none;border:none;background:var(--accent2);color:var(--surface);
+    font-family:"Noto Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:700;font-size:13.5px;
+    padding:9px 16px;border-radius:99px;cursor:pointer;
+    transition:filter .15s ease;
+  }
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:active{filter:brightness(.95);}
+  .paste-status{font-size:12.5px;color:var(--ink-muted);}
+  .paste-status.ok{color:var(--positive);}
+  .paste-status.err{color:#C24A3B;}
+
+  footer.page{
+    color:var(--ink-faint);font-size:12px;text-align:left;padding:8px 4px 0;
+  }
+  footer.page a{color:var(--ink-faint);}
+
+  @media (prefers-reduced-motion: reduce){
+    details.card > summary .chev, .drawer, .drawer-backdrop, .save-emoji.dirty{transition:none;animation:none;}
+  }
+
+  /* ---------- 인쇄: 화면 그대로 나오도록 색상 강제 + 불필요 요소 숨김 ---------- */
+  @media print{
+    @page{ margin:19mm 14mm 10mm; }
+    @page :first{ margin:22mm 14mm 10mm; }
+    html,body{background:#fff;}
+    *{
+      -webkit-print-color-adjust:exact !important;
+      print-color-adjust:exact !important;
+      color-adjust:exact !important;
+    }
+    body{padding:0;}
+    /* flex 컨테이너에서는 인쇄 시 강제 페이지 나눔(break-before)이 제대로 동작하지 않으므로
+       인쇄할 때만 block 레이아웃으로 바꾸고 gap 대신 margin으로 간격을 줌 */
+    .wrap{max-width:100%;display:block;zoom:0.89;}
+    .wrap > *{margin-bottom:8px;}
+    #monthlyDetailCard{margin-bottom:20px;}
+    .wrap > *:last-child{margin-bottom:0;}
+    .drawer, .drawer-backdrop{display:none !important;}
+    .card, .hero{box-shadow:none;padding:13px 16px;}
+    .hero{padding:15px 18px 13px;}
+    header.page{margin-bottom:0;}
+    h1{font-size:27px;}
+    .eyebrow{font-size:13px;}
+    /* 짧은 카드(①②)는 한 페이지 안에서 통째로 유지하고,
+       나머지 표 카드는 페이지에 맞춰 자연스럽게 이어지도록 함 */
+    .card.avoid-break, .hero{break-inside:avoid;}
+    /* 월별 발전량·시간대별 발전 패턴 두 표는 항상 같은 새 페이지에서 시작해 함께 나오도록 함 */
+    #monthlyDetailCard{break-before:page;}
+    /* 소제목이 페이지 맨 끝에 혼자 남지 않도록 함 */
+    .card h2, .card-head, details.card > summary{break-after:avoid-page;}
+    /* 표는 행 단위로만 쪼개지고, 페이지가 바뀌면 헤더 행이 다시 나타나도록 함 */
+    table thead{display:table-header-group;}
+    table tr{break-inside:avoid;}
+    .title-trigger-hint, h1.title-trigger .chev{display:none;}
+    h1.title-trigger{cursor:default;}
+    .tooltip::after{display:none;}
+    /* 표가 페이지 폭을 넘어가 카드 밖으로 삐져나오지 않도록 폭에 맞춰 축소하고,
+       overflow는 hidden으로 유지해 둥근 모서리가 그대로 살아있게 함 */
+    .table-scroll{overflow:hidden !important;border-radius:var(--radius-md) !important;}
+    table{min-width:0 !important;width:100% !important;font-size:12px;}
+    thead th{position:static !important;padding:6px 8px !important;} /* sticky 헤더는 인쇄 페이지 분할과 충돌해 표가 밀려나므로 인쇄 시 해제 */
+    tbody td{padding:5px 8px !important;}
+    thead th, tbody td{white-space:normal !important;}
+    table.wide{table-layout:fixed;font-size:9.5px;}
+    table.wide thead th, table.wide tbody td{padding:5px 3px !important;word-break:keep-all;}
+    /* 두 표의 '월' 열은 폰트 크기·왼쪽 정렬 기준 여백을 서로 맞춰서 표 너비가 달라도
+       항상 같은 x좌표에서 시작하도록 함(가운데 정렬은 칸 너비가 다르면 위치가 어긋남) */
+    #monthlyTable thead th:first-child, #monthlyTable tbody td:first-child,
+    #patternTable thead th:first-child, #patternTable tbody td:first-child{
+      font-size:11px !important;
+      text-align:left !important;
+      padding:6px 4px 6px 10px !important;
+    }
+    /* 월별 발전량 상세: 나머지 열은 가운데 정렬로 통일 (여백이 고르게 보이도록) */
+    #monthlyTable thead th:nth-child(2), #monthlyTable tbody td:nth-child(2),
+    #monthlyTable thead th:nth-child(3), #monthlyTable tbody td:nth-child(3),
+    #monthlyTable thead th:nth-child(4), #monthlyTable tbody td:nth-child(4),
+    #monthlyTable thead th:nth-child(5), #monthlyTable tbody td:nth-child(5),
+    #monthlyTable thead th:nth-child(6), #monthlyTable tbody td:nth-child(6),
+    #monthlyTable thead th:nth-child(7), #monthlyTable tbody td:nth-child(7){
+      text-align:center !important;
+    }
+    /* "평균 적용단가 (원/kWh)" 헤더는 줄바꿈 없이 한 줄로 */
+    #monthlyTable thead th:nth-child(5){
+      white-space:nowrap !important;
+    }
+    select, input[type="number"], input[type="text"]{border:1px solid #999;background:var(--accent-soft);}
+    a{text-decoration:none;color:inherit;}
+
+    /* 연간 발전량·절감액 등 통계 박스가 좁게 눌려 줄바꿈되는 것 방지 */
+    .hero{grid-template-columns:1fr;gap:14px;}
+    .hero-value{font-size:40px;}
+    .hero-stats{grid-template-columns:repeat(2,1fr);gap:10px;}
+    .stat{padding:10px 12px;break-inside:avoid;}
+    .stat .k{white-space:nowrap;}
+    .stat .v{white-space:nowrap;font-size:15px;}
+    .card h2{font-size:15px;margin-bottom:2px;}
+    .card .desc{margin-bottom:12px;}
+    .tou-note{padding:8px 10px;margin-top:10px;break-inside:avoid;}
+    .grid2{break-inside:avoid;}
+
+    details.card > summary .chev{display:none;}
+  }
+</style>
+
+
+<div class="wrap">
+
+  <header class="page">
+    <span class="eyebrow">KEPCO 저압·고압 요금제 · 자가발전 정산</span>
+    <div class="title-row">
+      <div class="save-emoji-wrap">
+        <button type="button" class="save-emoji" id="saveBtn" title="색상 선택 / 변경사항 저장" aria-haspopup="true" aria-expanded="false">💡</button>
+        <span class="cloud-status" id="cloudStatus"></span>
+        <div class="color-popover" id="colorPopover" role="menu">
+          <div class="color-popover-title">서식 색상 선택</div>
+          <div class="color-swatch-row" id="colorSwatchRow"></div>
+        </div>
+      </div>
+      <h1 id="pageTitleTrigger" class="title-trigger" role="button" tabindex="0" aria-controls="planDrawer" aria-expanded="false">태양광 발전 전력요금 및 절감효과 분석<span class="title-trigger-hint">📋 요금제 전체표(45종)</span></h1>
+    </div>
+  </header>
+
+  <!-- HERO RESULT -->
+  <section class="hero">
+    <div class="hero-main">
+      <span class="hero-label">정산단가 (전력단가)</span>
+      <div class="hero-value" id="heroUnitPrice">-- <small>원/kWh</small></div>
+      <span class="hero-plan-name" id="heroPlanName">요금제를 선택하세요</span>
+    </div>
+    <div class="hero-stats">
+      <div class="stat">
+        <span class="k">연간 발전량</span>
+        <span class="v" id="statGen">-- kWh</span>
+      </div>
+      <div class="stat">
+        <span class="k">연간 절감액 (부가세 포함)</span>
+        <span class="v positive" id="statSavings">-- 원</span>
+      </div>
+      <div class="stat">
+        <span class="k">발전소 용량</span>
+        <span class="v" id="statCapacity">-- kW</span>
+      </div>
+      <div class="stat">
+        <span class="k">평균 가동시간</span>
+        <span class="v" id="statHours">-- 시간/일</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLAN SELECT + RATE DATA -->
+  <section class="card avoid-break">
+    <div class="card-head">
+      <h2>① 요금제 선택</h2>
+      <span class="type-pill" id="typePill">지정가</span>
+    </div>
+    <div class="field" style="margin-bottom:16px;">
+      <label for="planSelect">요금제</label>
+      <div class="plan-dual-wrap" id="planDualWrap">
+        <input type="text" class="ss-input" id="planDualDisplay" autocomplete="off" readonly>
+        <div class="plan-dual-panel" id="planDualPanel">
+          <div class="plan-dual-col" id="planDualCatCol"></div>
+          <div class="plan-dual-col" id="planDualDetailCol"></div>
+        </div>
+      </div>
+      <select id="planSelect" style="display:none;"></select>
+    </div>
+    <div class="rate-row">
+      <div class="field rate-base-field">
+        <label><span class="season-dot base"></span>기본요금</label>
+        <div class="unit-input">
+          <input type="number" id="rateBase" step="10">
+          <span class="unit">원/kW</span>
+        </div>
+      </div>
+      <div id="rateEditor"></div>
+    </div>
+  </section>
+
+  <!-- CONDITIONS -->
+  <section class="card avoid-break">
+    <div class="card-head" style="align-items:center;">
+      <h2>② 계산 조건</h2>
+      <label class="season-toggle tooltip" id="seasonalToggleRow" data-tooltip="끄면 원본 엑셀과 동일하게 겨울철 기준 단가를 연중 일괄 적용합니다(고압 선택요금제는 겨울철의 경부하·중간부하·최대부하 시간대 구분과 단가를 사용). 켜면 발전월의 실제 계절 단가(여름/봄가을/겨울)를 각각 적용합니다.">
+        <input type="checkbox" id="useSeasonal">
+        <span class="season-check-mark">✓</span>
+        <span class="season-toggle-label" id="seasonModeLabel">겨울철 단가 적용</span>
+      </label>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="capacity">발전소 용량</label>
+        <div class="unit-input"><input type="number" id="capacity" step="0.001" value="49.665"><span class="unit">kW</span></div>
+      </div>
+      <div class="field">
+        <label for="climate">기후환경비</label>
+        <div class="unit-input"><input type="number" id="climate" step="0.1" value="9"><span class="unit">원/kWh</span></div>
+      </div>
+      <div class="field">
+        <label for="fuelAdj">연료비 조정단가</label>
+        <div class="unit-input"><input type="number" id="fuelAdj" step="0.1" value="5"><span class="unit">원/kWh</span></div>
+      </div>
+      <div class="field">
+        <label for="fundPct">전력산업기반기금</label>
+        <div class="unit-input"><input type="number" id="fundPct" step="0.1" value="2.7"><span class="unit">%</span></div>
+      </div>
+      <div class="field">
+        <label for="vatPct">부가가치세</label>
+        <div class="unit-input"><input type="number" id="vatPct" step="0.1" value="10"><span class="unit">%</span></div>
+      </div>
+    </div>
+    <p class="tou-note" id="touNote" style="display:none;">이 요금제는 고압 선택요금제입니다. 발전이 일어난 시각의 경부하·중간부하·최대부하 구간에 맞는 요금이 함께 적용됩니다. (한전 계절별·시간대별 구분표 기준)</p>
+  </section>
+
+  <!-- GENERATION PROFILE SUMMARY -->
+  <section class="card">
+    <div class="card-head">
+      <h2>③ 발전 패턴 요약</h2>
+    </div>
+    <p class="desc">업로드하신 엑셀의 시간대별 발전 프로파일을 계절·부하대 기준으로 집계했습니다. 발전소 용량과 무관한 비율(연간 발전량 기준)입니다.</p>
+
+    <div class="grid2" style="margin-bottom:18px;">
+      <div class="stat">
+        <span class="k"><span class="season-dot summer" style="display:inline-block;margin-right:5px;"></span>여름철 (6~8월)</span>
+        <span class="v">30.1%</span>
+      </div>
+      <div class="stat">
+        <span class="k"><span class="season-dot sf" style="display:inline-block;margin-right:5px;"></span>봄·가을철 (3~5,9~10월)</span>
+        <span class="v">45.3%</span>
+      </div>
+      <div class="stat">
+        <span class="k"><span class="season-dot winter" style="display:inline-block;margin-right:5px;"></span>겨울철 (11~2월)</span>
+        <span class="v">24.6%</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom:6px;font-size:12.5px;color:var(--ink-muted);font-weight:600;break-inside:avoid;">부하대별 발전 비중 (경부하 · 중간부하 · 최대부하)</div>
+    <div style="display:flex;height:26px;border-radius:8px;overflow:hidden;border:1px solid var(--border);break-inside:avoid;">
+      <div style="width:2.2%;background:#3F8F5C;" title="경부하 2.2%"></div>
+      <div style="width:72.2%;background:#D9781B;" title="중간부하 72.2%"></div>
+      <div style="width:25.6%;background:#3E7FBF;" title="최대부하 25.6%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-faint);margin-top:6px;flex-wrap:wrap;gap:6px;">
+      <span><span class="season-dot sf" style="display:inline-block;margin-right:4px;"></span>경부하 2.2%</span>
+      <span><span class="season-dot summer" style="display:inline-block;margin-right:4px;"></span>중간부하 72.2%</span>
+      <span><span class="season-dot winter" style="display:inline-block;margin-right:4px;"></span>최대부하 25.6%</span>
+    </div>
+
+    <p class="tou-note">발전은 대부분 중간부하·최대부하 시간대(06~20시)에 집중되고 경부하 시간대 발전은 2%대에 불과합니다. 고압 선택요금제 검토 시 중간·최대부하 단가가 절감액에 가장 큰 영향을 줍니다. 최다 발전월은 7월(연간의 11.1%), 최소 발전월은 1월(5.0%)입니다.</p>
+  </section>
+
+  <!-- MONTHLY DETAIL -->
+  <details class="card" id="monthlyDetailCard" open>
+    <summary>
+      <h2>월별 발전량 · 정산금액 상세</h2>
+      <span class="chev">▶</span>
+    </summary>
+    <div class="body">
+      <div class="table-scroll">
+        <table id="monthlyTable">
+          <thead>
+            <tr>
+              <th>월</th>
+              <th>계절</th>
+              <th>일수</th>
+              <th>발전량 (kWh)</th>
+              <th>평균 적용단가 (원/kWh)</th>
+              <th>전력량 금액 (원)</th>
+              <th>절감액 (부가세 포함, 원)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+
+  <!-- GENERATION PATTERN REFERENCE -->
+  <details class="card">
+    <summary>
+      <h2 class="tooltip" tabindex="0" id="patternHeading" data-tooltip="② 계산 조건에 입력한 발전소 용량을 반영한 월별·시간대별 하루 발전량(kWh)입니다. 용량을 바꾸면 아래 표도 함께 갱신됩니다.">시간대별 발전 패턴 (참고용, 발전소 <span id="patternCapacityLabel">--</span>kW 용량 기준 1일 발전량)</h2>
+      <span class="chev">▶</span>
+    </summary>
+    <div class="body">
+      <div class="table-scroll">
+        <table id="patternTable" class="wide"></table>
+      </div>
+    </div>
+  </details>
+
+  <footer class="page">업로드하신 계약전력 및 태양광 설치용량에 따른 전기요금 절감액 분석 엑셀의 발전 패턴·요금 로직을 그대로 반영했고, 고압 선택요금제는 한전 계절별·시간대별 구분표를 적용해 확장했습니다. 산업용(갑)Ⅰ·Ⅱ·(을) 요율은 한전 사이트 최신 고시값으로 갱신했습니다. 실제 청구 금액은 한전 고시 및 계약 조건에 따라 달라질 수 있습니다.</footer>
+</div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="planDrawer" aria-hidden="true">
+  <div class="drawer-resize-handle" id="drawerResizeHandle" aria-hidden="true"></div>
+  <div class="drawer-head">
+    <h2>📋 저압·고압 요금제 전체표 (45종)</h2>
+    <button type="button" class="drawer-close" id="drawerClose" aria-label="닫기">✕</button>
+  </div>
+  <div class="drawer-body">
+    <p class="desc">참고용 표입니다. 지정가 요금제는 계절별 단일 단가를, 선택 요금제(고압)는 "경부하 · 중간부하 · 최대부하" 순으로 표시합니다. 개별 값 수정은 ①번 편집 영역에서 요금제를 고른 뒤 위쪽 제목 옆 💡로 저장하세요. 선택된 요금제는 강조 표시됩니다. 오른쪽 가장자리를 마우스로 드래그하면 표 너비를 조절할 수 있습니다.</p>
+
+    <div class="paste-import">
+      <h3>📥 한전 사이트에서 붙여넣기로 갱신</h3>
+      <p class="desc">online.kepco.co.kr 요금표에서 표 전체를 마우스로 드래그해 그대로 복사하세요(제목·안내문·구분/전압/시간대 글자가 같이 선택돼도 괜찮습니다 — 숫자만 자동으로 골라냅니다). 아래에서 해당 카테고리를 고르고 붙여넣은 다음 "표에 반영"을 누르세요.</p>
+      <div class="field">
+        <label for="pasteCategory">카테고리</label>
+        <select id="pasteCategory"></select>
+      </div>
+      <textarea id="pasteArea" rows="4" placeholder="여기에 붙여넣으세요 (Ctrl+V / Cmd+V)"></textarea>
+      <div class="paste-actions">
+        <button type="button" class="btn-primary" id="pasteApplyBtn">표에 반영</button>
+        <span class="paste-status" id="pasteStatus"></span>
+      </div>
+    </div>
+
+    <div class="plan-table-toolbar">
+      <input type="text" id="planTableSearch" placeholder="🔍 구분 검색 (예: 산업용, 교육용...)">
+    </div>
+    <div class="table-scroll">
+      <table id="planTable" class="wide">
+        <thead>
+          <tr>
+            <th class="sortable" id="planTableSortHeader">구분 <span class="sort-icon" id="planTableSortIcon">⇅</span></th>
+            <th>전압</th>
+            <th>선택</th>
+            <th>유형</th>
+            <th>기본요금(원/kW)</th>
+            <th>여름철(원/kWh)</th>
+            <th>봄·가을철(원/kWh)</th>
+            <th>겨울철(원/kWh)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</aside>
+
+<script>
+(function(){
+  "use strict";
+
+  var MONTHS = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+  var DAYS   = [31,28,31,30,31,30,31,31,30,31,30,31];
+  var SEASON_OF_MONTH = ["겨울","겨울","봄","봄","봄","여름","여름","여름","가을","가을","겨울","겨울"]; // idx0=1월
+  var HOURS = ["06~07시","07~08시","08~09시","09~10시","10~11시","11~12시","12~13시","13~14시","14~15시","15~16시","16~17시","17~18시","18~19시","19~20시"];
+
+  // 발전시간 비율표: 12개월 x 14시간대 (1월→12월 순서), 업로드 엑셀 '전력 패턴' 표 원본값
+  var GEN_PATTERN = [
+    [0,0.000200943092916086,0.024400232711239,0.128110898712433,0.243399497833642,0.323374848814244,0.368931518593934,0.384892141402698,0.330981980188925,0.23309398778266,0.11026034569867,0.0102768038948513,0,0],
+    [0,0.00893069021628585,0.0640403586683843,0.239698454132484,0.394889060275273,0.507301342463896,0.582560682080141,0.575950064411147,0.5450899213506,0.429118075801749,0.253428198521934,0.0658837039799308,0,0],
+    [0.00212425555368434,0.0445232481589785,0.171260927476767,0.33215893259029,0.463805364606458,0.558334736745411,0.578510857681767,0.567664237487943,0.503592097003843,0.391953855810891,0.271761180090941,0.108767625579864,0.00803710837166434,0],
+    [0.021031086853346,0.112749169435216,0.269073327005221,0.415252108899857,0.545888704318937,0.634759136212624,0.620995491219744,0.630161366810833,0.561521120075937,0.468616516373991,0.330564784053156,0.165519696250593,0.0339641670621737,0],
+    [0.0413655709845829,0.124699542232497,0.23177350460064,0.341660670269608,0.436936402467964,0.475804537869161,0.515562564110415,0.551531377742395,0.509907451352634,0.416325382366,0.301351082706186,0.168476430332073,0.052101673377528,0],
+    [0.0538971081879449,0.140632415757001,0.284320123398197,0.406502135738016,0.496321784527765,0.571992168960607,0.566148552444233,0.555351210251542,0.529752017085904,0.420028476506882,0.323949928808733,0.212298291409587,0.0806834361651637,0],
+    [0.0401599124270864,0.132995621354318,0.26874703369108,0.414574306842017,0.526269960341083,0.594217431908998,0.601594914034631,0.5817589601482,0.547024511229848,0.440495965828192,0.340254068619195,0.201488509882573,0.0783965123934045,0],
+    [0.0199507785109543,0.105609948405469,0.21790843118943,0.332010881412189,0.415952202336298,0.462513587580569,0.466704686375675,0.458150251848677,0.416899505488617,0.327422416828697,0.25950365142306,0.155128067731219,0.0470780960546259,0],
+    [0.00851086150925486,0.0730007119126108,0.185957522543901,0.314991694352159,0.415341718082582,0.464137399145705,0.523018509108947,0.54265543426673,0.445301376364499,0.390573089700997,0.242732558139535,0.115567157095396,0.0116279069767442,0],
+    [0.000660241591009997,0.0299692270006277,0.135464350781573,0.288261081986619,0.378806436302953,0.464121132323897,0.481000352128849,0.431798000520538,0.379466677893963,0.293061147940046,0.16112765436257,0.0300553454690203,0,0],
+    [0,0.0134076886568581,0.0928452776459421,0.250919553868059,0.366368058851448,0.434504034171808,0.464493355481108,0.416795206454675,0.339760322733745,0.214404366397108,0.0830861414333175,0.00358922638822971,0,0],
+    [0,0.00111954008910391,0.0329546610838238,0.19313501844849,0.326245464427331,0.426659598573113,0.462456175268307,0.418995054886171,0.344330342789779,0.229362187485647,0.0716218595465193,0.000631535434879128,0,0]
+  ];
+
+  var SEASON_KEY = { "겨울":"winter", "봄":"sf", "가을":"sf", "여름":"summer" };
+
+  // 계절별·시간대별 구분표(한전 online.kepco.co.kr/PRM004D00 고시 기준, 2026.08 갱신):
+  // 06~07시~19~20시(14개 버킷)가 경(off)/중간(mid)/최대(peak) 중 어디에 속하는지.
+  // 여름철·봄가을철: 경 22~08, 중간 08~15·21~22, 최대 15~21
+  // 겨울철:           경 22~08, 중간 08~09·12~16·19~22, 최대 09~12·16~19
+  var TOU_BAND = {
+    summer: ["off","off","mid","mid","mid","mid","mid","mid","mid","peak","peak","peak","peak","peak"],
+    sf:     ["off","off","mid","mid","mid","mid","mid","mid","mid","peak","peak","peak","peak","peak"],
+    winter: ["off","off","mid","peak","peak","peak","mid","mid","mid","mid","peak","peak","peak","mid"]
+  };
+  var BAND_LABEL = { off:"경부하", mid:"중간부하", peak:"최대부하" };
+
+  // 저압·고압 요금제 45종: 업로드 엑셀 '요금제' 시트 값 그대로 (지정가=flat, 고압 선택요금=tou)
+  var RATE_PLANS = [
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압A", tier:"선택 Ⅰ", type:"tou", base:7170, off:{summer:89.4,sf:89.4,winter:98.1}, mid:{summer:140.6,sf:96.8,winter:128.5}, peak:{summer:163.1,sf:108.1,winter:143.3}},
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압A", tier:"선택 Ⅱ", type:"tou", base:8230, off:{summer:84.1,sf:84.1,winter:92.8}, mid:{summer:135.3,sf:91.5,winter:123.2}, peak:{summer:157.8,sf:102.8,winter:138}},
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압A", tier:"선택 Ⅲ", type:"flat", base:7170, summer:142.6, sf:98.6, winter:130.3},
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압A", tier:"선택 Ⅳ", type:"flat", base:8230, summer:138.6, sf:94.3, winter:125.0},
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압B", tier:"선택 Ⅰ", type:"tou", base:7170, off:{summer:88.8,sf:88.8,winter:97.8}, mid:{summer:137.4,sf:94.7,winter:125.1}, peak:{summer:153.8,sf:100.1,winter:139.3}},
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압B", tier:"선택 Ⅱ", type:"tou", base:8230, off:{summer:83.5,sf:83.5,winter:92.5}, mid:{summer:132.1,sf:89.4,winter:119.8}, peak:{summer:148.5,sf:94.8,winter:134}},
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압B", tier:"선택 Ⅲ", type:"flat", base:7170, summer:140.5, sf:97.5, winter:127.3},
+    {cat:"일반용전력(갑)Ⅱ", volt:"고압B", tier:"선택 Ⅳ", type:"flat", base:8230, summer:135.2, sf:92.2, winter:122.0},
+    {cat:"일반용전력(을)", volt:"고압A", tier:"선택 Ⅰ", type:"tou", base:7220, off:{summer:92.8,sf:92.8,winter:99.8}, mid:{summer:145.7,sf:115.3,winter:145.9}, peak:{summer:227.8,sf:146,winter:203.4}},
+    {cat:"일반용전력(을)", volt:"고압A", tier:"선택 Ⅱ", type:"tou", base:8320, off:{summer:87.3,sf:87.3,winter:94.3}, mid:{summer:140.2,sf:109.8,winter:140.4}, peak:{summer:222.3,sf:140.5,winter:197.9}},
+    {cat:"일반용전력(을)", volt:"고압A", tier:"선택 Ⅲ", type:"tou", base:9810, off:{summer:86.4,sf:86.4,winter:93.7}, mid:{summer:139.6,sf:108.5,winter:139.8}, peak:{summer:209.9,sf:132.2,winter:186.7}},
+    {cat:"일반용전력(을)", volt:"고압B", tier:"선택 Ⅰ", type:"tou", base:6630, off:{summer:95.9,sf:95.9,winter:102.9}, mid:{summer:148.2,sf:118.2,winter:148.2}, peak:{summer:229.4,sf:148.5,winter:204.4}},
+    {cat:"일반용전력(을)", volt:"고압B", tier:"선택 Ⅱ", type:"tou", base:7380, off:{summer:92.1,sf:92.1,winter:99.1}, mid:{summer:144.4,sf:114.4,winter:144.4}, peak:{summer:225.6,sf:144.7,winter:200.6}},
+    {cat:"일반용전력(을)", volt:"고압B", tier:"선택 Ⅲ", type:"tou", base:8190, off:{summer:90.4,sf:90.4,winter:97.5}, mid:{summer:142.7,sf:112.8,winter:142.7}, peak:{summer:224,sf:143.1,winter:198.9}},
+    {cat:"산업용(갑)Ⅱ", volt:"고압A", tier:"선택 Ⅰ", type:"tou", base:6490, off:{summer:95.7,sf:95.7,winter:103.1}, mid:{summer:121.5,sf:100.5,winter:120.0}, peak:{summer:155.0,sf:119.7,winter:149.4}},
+    {cat:"산업용(갑)Ⅱ", volt:"고압A", tier:"선택 Ⅱ", type:"tou", base:7470, off:{summer:90.8,sf:90.8,winter:98.2}, mid:{summer:116.6,sf:95.6,winter:115.1}, peak:{summer:150.1,sf:114.8,winter:144.5}},
+    {cat:"산업용(갑)Ⅱ", volt:"고압B", tier:"선택 Ⅰ", type:"tou", base:6000, off:{summer:92.5,sf:92.5,winter:99.7}, mid:{summer:120.1,sf:99.1,winter:117.7}, peak:{summer:153.9,sf:117.9,winter:146.4}},
+    {cat:"산업용(갑)Ⅱ", volt:"고압B", tier:"선택 Ⅱ", type:"tou", base:6900, off:{summer:88.0,sf:88.0,winter:95.2}, mid:{summer:115.6,sf:94.6,winter:113.2}, peak:{summer:149.4,sf:113.4,winter:141.9}},
+    {cat:"산업용전력(을)", volt:"고압A", tier:"선택 Ⅰ", type:"tou", base:7220, off:{summer:121.5,sf:121.5,winter:128.5}, mid:{summer:169.3,sf:138.9,winter:169.5}, peak:{summer:234.5,sf:156.4,winter:210.1}},
+    {cat:"산업용전력(을)", volt:"고압A", tier:"선택 Ⅱ", type:"tou", base:8320, off:{summer:116.0,sf:116.0,winter:123.0}, mid:{summer:163.8,sf:133.4,winter:164.0}, peak:{summer:229.0,sf:150.9,winter:204.6}},
+    {cat:"산업용전력(을)", volt:"고압A", tier:"선택 Ⅲ", type:"tou", base:9810, off:{summer:115.1,sf:115.1,winter:122.4}, mid:{summer:163.2,sf:132.1,winter:163.4}, peak:{summer:216.6,sf:142.6,winter:193.4}},
+    {cat:"산업용전력(을)", volt:"고압B", tier:"선택 Ⅰ", type:"tou", base:6630, off:{summer:131.4,sf:131.4,winter:138.4}, mid:{summer:178.6,sf:148.6,winter:178.6}, peak:{summer:242.9,sf:165.7,winter:217.9}},
+    {cat:"산업용전력(을)", volt:"고압B", tier:"선택 Ⅱ", type:"tou", base:7380, off:{summer:127.6,sf:127.6,winter:134.6}, mid:{summer:174.8,sf:144.8,winter:174.8}, peak:{summer:239.1,sf:161.9,winter:214.1}},
+    {cat:"산업용전력(을)", volt:"고압B", tier:"선택 Ⅲ", type:"tou", base:8190, off:{summer:125.9,sf:125.9,winter:133.0}, mid:{summer:173.1,sf:143.2,winter:173.1}, peak:{summer:237.5,sf:160.3,winter:212.4}},
+    {cat:"산업용전력(을)", volt:"고압C", tier:"선택 Ⅰ", type:"tou", base:6590, off:{summer:130.9,sf:130.9,winter:137.8}, mid:{summer:178.7,sf:148.7,winter:178.3}, peak:{summer:242.7,sf:165.9,winter:218.0}},
+    {cat:"산업용전력(을)", volt:"고압C", tier:"선택 Ⅱ", type:"tou", base:7520, off:{summer:126.2,sf:126.2,winter:133.1}, mid:{summer:174.0,sf:144.0,winter:173.6}, peak:{summer:238.0,sf:161.2,winter:213.3}},
+    {cat:"산업용전력(을)", volt:"고압C", tier:"선택 Ⅲ", type:"tou", base:8090, off:{summer:125.1,sf:125.1,winter:132.0}, mid:{summer:172.9,sf:142.9,winter:172.5}, peak:{summer:236.9,sf:160.1,winter:212.2}},
+    {cat:"일반용전력(갑)Ⅰ", volt:"저압전력", tier:"지정가", type:"flat", base:6160, summer:132.4, sf:91.9, winter:119},
+    {cat:"일반용전력(갑)Ⅰ", volt:"고압A", tier:"선택 Ⅰ", type:"flat", base:7170, summer:142.6, sf:98.6, winter:130.3},
+    {cat:"일반용전력(갑)Ⅰ", volt:"고압A", tier:"선택 Ⅱ", type:"flat", base:8230, summer:138.6, sf:94.3, winter:125},
+    {cat:"일반용전력(갑)Ⅰ", volt:"고압B", tier:"선택 Ⅰ", type:"flat", base:7170, summer:140.5, sf:97.5, winter:127.3},
+    {cat:"일반용전력(갑)Ⅰ", volt:"고압B", tier:"선택 Ⅱ", type:"flat", base:8230, summer:135.2, sf:92.2, winter:122},
+    {cat:"산업용(갑)Ⅰ", volt:"저압전력", tier:"지정가", type:"flat", base:5550, summer:116.2, sf:94.4, winter:114.5, isDefault:true},
+    {cat:"산업용(갑)Ⅰ", volt:"고압A", tier:"선택 Ⅰ", type:"flat", base:6490, summer:124.8, sf:101.1, winter:124.7},
+    {cat:"산업용(갑)Ⅰ", volt:"고압A", tier:"선택 Ⅱ", type:"flat", base:7470, summer:120.0, sf:96.5, winter:118.2},
+    {cat:"산업용(갑)Ⅰ", volt:"고압B", tier:"선택 Ⅰ", type:"flat", base:6000, summer:123.6, sf:100.0, winter:123.2},
+    {cat:"산업용(갑)Ⅰ", volt:"고압B", tier:"선택 Ⅱ", type:"flat", base:6900, summer:118.9, sf:95.4, winter:117.1},
+    {cat:"농사용(갑)", volt:"저압전력", tier:"지정가", type:"flat", base:360, summer:41.9, sf:41.9, winter:41.9},
+    {cat:"농사용(을)", volt:"저압전력", tier:"지정가", type:"flat", base:1150, summer:59.5, sf:59.5, winter:59.5},
+    {cat:"농사용(을)", volt:"고압A,B", tier:"지정가", type:"flat", base:1210, summer:62.2, sf:60.2, winter:62.2},
+    {cat:"교육용전력(갑)", volt:"저압전력", tier:"지정가", type:"flat", base:5230, summer:123.6, sf:86.4, winter:110.8},
+    {cat:"교육용전력(갑)", volt:"고압A", tier:"선택 Ⅰ", type:"flat", base:5550, summer:123.3, sf:86.5, winter:109.3},
+    {cat:"교육용전력(갑)", volt:"고압A", tier:"선택 Ⅱ", type:"flat", base:6370, summer:118.8, sf:82.1, winter:104.8},
+    {cat:"교육용전력(갑)", volt:"고압B", tier:"선택 Ⅰ", type:"flat", base:5550, summer:122.6, sf:86.1, winter:108.5},
+    {cat:"교육용전력(갑)", volt:"고압B", tier:"선택 Ⅱ", type:"flat", base:6370, summer:118.1, sf:81.6, winter:104},
+    {cat:"교육용전력(을)", volt:"고압A", tier:"선택 Ⅰ", type:"tou", base:6090, off:{summer:76.5,sf:76.5,winter:80.5}, mid:{summer:121.2,sf:90.9,winter:119.7}, peak:{summer:187.1,sf:111.4,winter:158.4}},
+    {cat:"교육용전력(을)", volt:"고압A", tier:"선택 Ⅱ", type:"tou", base:6980, off:{summer:72,sf:72,winter:76}, mid:{summer:116.7,sf:86.4,winter:115.2}, peak:{summer:182.6,sf:106.9,winter:153.9}},
+    {cat:"교육용전력(을)", volt:"고압B", tier:"선택 Ⅰ", type:"tou", base:6090, off:{summer:75,sf:75,winter:78.8}, mid:{summer:118.5,sf:89.2,winter:116.8}, peak:{summer:181.4,sf:109,winter:154.1}},
+    {cat:"교육용전력(을)", volt:"고압B", tier:"선택 Ⅱ", type:"tou", base:6980, off:{summer:70.5,sf:70.5,winter:74.3}, mid:{summer:114,sf:84.7,winter:112.3}, peak:{summer:176.9,sf:104.5,winter:149.6}}
+  ];
+
+  /* ---------- 클라우드 실시간 동기화 (Firebase Firestore) ----------
+     붙여넣기/수정한 요금표(RATE_PLANS의 base·summer·sf·winter·off·mid·peak 값)를
+     Firestore 문서 하나에 저장하고, 실시간 리스너로 다른 컴퓨터/브라우저에서도
+     즉시 반영되도록 함. */
+  var firebaseConfig = {
+    apiKey: "AIzaSyDY7W2fbZ9GjfE000E4BLh9FblQw5szZVg",
+    authDomain: "power-based-savings.firebaseapp.com",
+    projectId: "power-based-savings",
+    storageBucket: "power-based-savings.firebasestorage.app",
+    messagingSenderId: "1033194961511",
+    appId: "1:1033194961511:web:0400c7d04fb7e767e7f2c2",
+    measurementId: "G-NMWY2WRH5B"
+  };
+  var db = null, RATE_DOC_REF = null;
+  var applyingRemoteUpdate = false;
+  var cloudSaveTimer = null;
+
+  function serializeRatePlans(){
+    return RATE_PLANS.map(function(p){
+      if(p.type === "flat"){
+        return { base:p.base, summer:p.summer, sf:p.sf, winter:p.winter };
+      }
+      return { base:p.base, off:p.off, mid:p.mid, peak:p.peak };
+    });
+  }
+
+  function applyRatePlanOverrides(list){
+    if(!Array.isArray(list)) return;
+    list.forEach(function(o, i){
+      var p = RATE_PLANS[i];
+      if(!p || !o) return;
+      if(typeof o.base === "number") p.base = o.base;
+      if(p.type === "flat"){
+        if(typeof o.summer === "number") p.summer = o.summer;
+        if(typeof o.sf === "number") p.sf = o.sf;
+        if(typeof o.winter === "number") p.winter = o.winter;
+      } else {
+        ["off","mid","peak"].forEach(function(band){
+          if(o[band]) p[band] = Object.assign({}, p[band], o[band]);
+        });
+      }
+    });
+  }
+
+  function showCloudStatus(msg, isErr){
+    if(!els.cloudStatus) return;
+    els.cloudStatus.textContent = msg;
+    els.cloudStatus.classList.toggle("err", !!isErr);
+    els.cloudStatus.classList.add("show");
+    clearTimeout(showCloudStatus._t);
+    showCloudStatus._t = setTimeout(function(){
+      els.cloudStatus.classList.remove("show");
+    }, 2600);
+  }
+
+  function saveRatePlansToCloud(){
+    if(applyingRemoteUpdate || !RATE_DOC_REF) return;
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(function(){
+      RATE_DOC_REF.set({
+        plans: serializeRatePlans(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(function(){
+        showCloudStatus("☁ 저장됨", false);
+      }).catch(function(err){
+        console.error("Firestore save failed", err);
+        showCloudStatus("⚠ 동기화 실패", true);
+      });
+    }, 400);
+  }
+
+  function initCloudSync(){
+    try{
+      var app = firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      RATE_DOC_REF = db.collection("solarTariffCalculator").doc("ratePlanOverrides");
+      RATE_DOC_REF.onSnapshot(function(snap){
+        if(!snap.exists){
+          // 클라우드에 아직 데이터가 없으면(최초 1회) 지금 화면에 있는 요금표를
+          // 그대로 초기값으로 올려서, 이후 다른 컴퓨터에서 열 때도 이 상태로 보이게 함.
+          saveRatePlansToCloud();
+          return;
+        }
+        var data = snap.data();
+        applyingRemoteUpdate = true;
+        applyRatePlanOverrides(data.plans);
+        buildPlanTable();
+        if(!dirty) loadPlanIntoFields();
+        buildPatternTable();
+        recompute();
+        applyingRemoteUpdate = false;
+        showCloudStatus("☁ 동기화됨", false);
+      }, function(err){
+        console.error("Firestore listen failed", err);
+        showCloudStatus("⚠ 연결 실패", true);
+      });
+    }catch(err){
+      console.error("Firebase init failed", err);
+      showCloudStatus("⚠ 연결 실패", true);
+    }
+  }
+
+  var els = {};
+  ["planSelect","rateBase","rateEditor","typePill","seasonalToggleRow","touNote","saveBtn",
+   "capacity","climate","fuelAdj","fundPct","vatPct","useSeasonal","seasonModeLabel",
+   "heroUnitPrice","heroPlanName","statGen","statSavings","statCapacity","statHours",
+   "pageTitleTrigger","planDrawer","drawerBackdrop","drawerClose","drawerResizeHandle",
+   "pasteCategory","pasteArea","pasteApplyBtn","pasteStatus","colorPopover","colorSwatchRow","cloudStatus",
+   "planTableSearch","planTableSortHeader","planTableSortIcon",
+   "planDualWrap","planDualDisplay","planDualPanel","planDualCatCol","planDualDetailCol"
+  ].forEach(function(id){ els[id] = document.getElementById(id); });
+
+  var selectedIndex = 0;
+  RATE_PLANS.forEach(function(p,i){ if(p.isDefault) selectedIndex = i; });
+
+  var draft = {};
+  var dirty = false;
+  function setDirty(v){
+    dirty = v;
+    els.saveBtn.classList.toggle("dirty", v);
+  }
+
+  function fmtInt(n){ return Math.round(n).toLocaleString("ko-KR"); }
+  function fmt1(n){ return n.toLocaleString("ko-KR",{minimumFractionDigits:1,maximumFractionDigits:2}); }
+
+  function planLabel(p){ return p.cat + " · " + p.volt + " · " + p.tier; }
+  function planTypeLabel(p){ return p.type==="flat" ? "지정가" : "선택요금(TOU)"; }
+  function planSeasonCell(p, season){
+    if(p.type==="flat") return fmt1(p[season]);
+    return fmt1(p.off[season]) + " · " + fmt1(p.mid[season]) + " · " + fmt1(p.peak[season]);
+  }
+
+  function buildPlanSelect(){
+    els.planSelect.innerHTML = "";
+    var group = null, groupCat = null;
+    RATE_PLANS.forEach(function(p,i){
+      if(p.cat !== groupCat){
+        groupCat = p.cat;
+        group = document.createElement("optgroup");
+        group.label = groupCat;
+        els.planSelect.appendChild(group);
+      }
+      var opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = p.volt + " · " + p.tier;
+      group.appendChild(opt);
+    });
+    els.planSelect.value = selectedIndex;
+  }
+
+  // ---------- 요금제 2단 선택: 왼쪽 카테고리 목록 → 오른쪽 세부(전압·선택) 목록 ----------
+  function catType(cat){
+    var m = cat.match(/^(일반용|산업용|교육용|농사용)/);
+    return m ? m[1] : cat;
+  }
+  function catEligibilityNote(cat){
+    if(catType(cat) === "일반용" || catType(cat) === "산업용"){
+      if(cat.indexOf("(갑)") !== -1) return "[계약전력 < 300kW]";
+      if(cat.indexOf("(을)") !== -1) return "[계약전력 ≥ 300kW]";
+    }
+    return "";
+  }
+
+  var planDualHoverCat = null;
+
+  function planDualRenderCatCol(){
+    var cats = categoryList().slice().sort(function(a,b){ return a.localeCompare(b, "ko"); });
+    els.planDualCatCol.innerHTML = "";
+    cats.forEach(function(cat){
+      var item = document.createElement("div");
+      item.className = "plan-dual-item";
+      item.dataset.cat = cat;
+      if(cat === planDualHoverCat) item.classList.add("hovered");
+      var note = catEligibilityNote(cat);
+      item.innerHTML = cat + (note ? "<span class='note'>"+note+"</span>" : "");
+      item.addEventListener("mousedown", function(e){ e.preventDefault(); planDualSetHoverCat(cat); });
+      els.planDualCatCol.appendChild(item);
+    });
+  }
+
+  function planDualSetHoverCat(cat){
+    if(cat === planDualHoverCat) return;
+    planDualHoverCat = cat;
+    Array.prototype.forEach.call(els.planDualCatCol.children, function(el){
+      el.classList.toggle("hovered", el.dataset.cat === cat);
+    });
+    planDualRenderDetailCol(cat);
+  }
+
+  function planDualRenderDetailCol(cat){
+    els.planDualDetailCol.innerHTML = "";
+    RATE_PLANS.forEach(function(p,i){
+      if(p.cat !== cat) return;
+      var item = document.createElement("div");
+      item.className = "plan-dual-item";
+      if(i === selectedIndex) item.classList.add("selected");
+      item.textContent = p.cat + " " + p.volt + " " + p.tier;
+      item.addEventListener("mousedown", function(e){
+        e.preventDefault();
+        els.planSelect.value = i;
+        els.planSelect.dispatchEvent(new Event("change", { bubbles:true }));
+        planDualSyncDisplay();
+        planDualClose();
+      });
+      els.planDualDetailCol.appendChild(item);
+    });
+  }
+
+  function planDualSyncDisplay(){
+    var p = RATE_PLANS[selectedIndex];
+    els.planDualDisplay.value = p.cat + " " + p.volt + " " + p.tier;
+  }
+
+  function planDualOpen(){
+    var p = RATE_PLANS[selectedIndex];
+    planDualHoverCat = p.cat;
+    planDualRenderCatCol();
+    planDualRenderDetailCol(p.cat);
+    els.planDualPanel.classList.add("open");
+    els.planDualWrap.classList.add("open");
+    document.addEventListener("mousedown", planDualOutsideClick, true);
+  }
+  function planDualClose(){
+    els.planDualPanel.classList.remove("open");
+    els.planDualWrap.classList.remove("open");
+    document.removeEventListener("mousedown", planDualOutsideClick, true);
+  }
+  function planDualOutsideClick(e){
+    if(!els.planDualWrap.contains(e.target)) planDualClose();
+  }
+  function planDualToggle(){
+    if(els.planDualPanel.classList.contains("open")) planDualClose();
+    else planDualOpen();
+  }
+
+  function initPlanDualPicker(){
+    els.planDualDisplay.addEventListener("mousedown", function(e){
+      e.preventDefault();
+      planDualToggle();
+    });
+    els.planDualDisplay.addEventListener("keydown", function(e){
+      if(e.key === "Escape") planDualClose();
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); planDualToggle(); }
+    });
+    planDualSyncDisplay();
+  }
+
+  // ---------- 검색 가능한 드롭다운 (네이티브 select를 감싸서 검색·필터 UI 제공) ----------
+  // 원본 <select>는 화면에서 숨기되(값·change 이벤트는 그대로 유지) 그 옆에 검색용
+  // 텍스트 입력 + 드롭다운 패널을 만들어, 기존 change 리스너 등 다른 코드를 건드리지
+  // 않고도 검색 기능을 추가합니다.
+  function initSearchableSelect(selectEl, placeholder){
+    var wrap = selectEl.nextElementSibling;
+    if(!wrap || !wrap.classList || !wrap.classList.contains("ss-wrap")){
+      wrap = document.createElement("div");
+      wrap.className = "ss-wrap";
+      wrap.innerHTML = '<input type="text" class="ss-input" autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="off">' +
+        '<div class="ss-panel" role="listbox"></div>';
+      selectEl.style.display = "none";
+      selectEl.parentNode.insertBefore(wrap, selectEl.nextSibling);
+
+      var input = wrap.querySelector(".ss-input");
+      var panel = wrap.querySelector(".ss-panel");
+
+      function makeOptionItem(optionEl, groupLabel){
+        var item = document.createElement("div");
+        item.className = "ss-option";
+        if(optionEl.value === selectEl.value) item.classList.add("active");
+        item.textContent = optionEl.textContent;
+        item.addEventListener("mousedown", function(e){
+          e.preventDefault();
+          selectEl.value = optionEl.value;
+          syncDisplay();
+          closePanel();
+          selectEl.dispatchEvent(new Event("change", { bubbles:true }));
+        });
+        return item;
+      }
+
+      function renderPanel(filterText){
+        var q = (filterText || "").trim().toLowerCase();
+        panel.innerHTML = "";
+        var anyMatch = false;
+        Array.prototype.forEach.call(selectEl.children, function(node){
+          if(node.tagName === "OPTGROUP"){
+            var matches = Array.prototype.filter.call(node.children, function(opt){
+              var hay = (node.label + " " + opt.textContent).toLowerCase();
+              return !q || hay.indexOf(q) !== -1;
+            });
+            if(matches.length){
+              anyMatch = true;
+              var gl = document.createElement("div");
+              gl.className = "ss-group-label";
+              gl.textContent = node.label;
+              panel.appendChild(gl);
+              matches.forEach(function(opt){ panel.appendChild(makeOptionItem(opt, node.label)); });
+            }
+          } else if(node.tagName === "OPTION"){
+            var hay2 = node.textContent.toLowerCase();
+            if(!q || hay2.indexOf(q) !== -1){
+              anyMatch = true;
+              panel.appendChild(makeOptionItem(node, null));
+            }
+          }
+        });
+        if(!anyMatch){
+          var empty = document.createElement("div");
+          empty.className = "ss-empty";
+          empty.textContent = "일치하는 항목이 없습니다";
+          panel.appendChild(empty);
+        }
+      }
+      function openPanel(){ renderPanel(""); panel.classList.add("open"); wrap.classList.add("open"); input.select(); }
+      function closePanel(){ panel.classList.remove("open"); wrap.classList.remove("open"); syncDisplay(); }
+      function syncDisplay(){
+        var opt = null;
+        Array.prototype.forEach.call(selectEl.querySelectorAll("option"), function(o){
+          if(o.value === selectEl.value) opt = o;
+        });
+        var label = opt ? opt.textContent : "";
+        var groupLabel = opt && opt.parentElement && opt.parentElement.tagName === "OPTGROUP" ? opt.parentElement.label : null;
+        input.value = groupLabel ? (groupLabel + " · " + label) : label;
+      }
+
+      input.addEventListener("focus", openPanel);
+      input.addEventListener("input", function(){ renderPanel(input.value); panel.classList.add("open"); wrap.classList.add("open"); });
+      input.addEventListener("blur", function(){ setTimeout(closePanel, 150); });
+      input.addEventListener("keydown", function(e){
+        if(e.key === "Escape"){ input.blur(); }
+        if(e.key === "Enter"){
+          var first = panel.querySelector(".ss-option");
+          if(first){ first.dispatchEvent(new MouseEvent("mousedown", {bubbles:true, cancelable:true})); }
+          e.preventDefault();
+          input.blur();
+        }
+      });
+
+      wrap._syncDisplay = syncDisplay;
+      wrap._placeholder = placeholder;
+    }
+    wrap.querySelector(".ss-input").placeholder = placeholder;
+    wrap._syncDisplay();
+  }
+
+  function seasonFieldHTML(season, label){
+    var dotClass = season==="summer" ? "summer" : season==="sf" ? "sf" : "winter";
+    return "<div class='rate-cell field'><label><span class='season-dot "+dotClass+"'></span>"+label+"</label>" +
+      "<div class='unit-input'><input type='number' step='0.1' data-season='"+season+"'><span class='unit'>원/kWh</span></div></div>";
+  }
+
+  function buildRateEditor(){
+    var plan = RATE_PLANS[selectedIndex];
+    els.rateEditor.innerHTML = "";
+    els.typePill.textContent = planTypeLabel(plan);
+
+    els.seasonalToggleRow.style.display = "";
+    if(plan.type === "flat"){
+      els.touNote.style.display = "none";
+      var grid = document.createElement("div");
+      grid.className = "rate-grid";
+      grid.innerHTML =
+        seasonFieldHTML("summer","여름철 (6~8월)") +
+        seasonFieldHTML("sf","봄·가을철 (3~5,9~10월)") +
+        seasonFieldHTML("winter","겨울철 (11~2월)");
+      els.rateEditor.appendChild(grid);
+      grid.querySelectorAll("input[data-season]").forEach(function(inp){
+        inp.value = plan[inp.dataset.season];
+        inp.addEventListener("input", function(){
+          var v = parseFloat(inp.value);
+          if(isNaN(v)) return;
+          draft[inp.dataset.season] = v;
+          setDirty(true);
+        });
+      });
+    } else {
+      els.touNote.style.display = "";
+      var scrollWrap = document.createElement("div");
+      scrollWrap.className = "table-scroll";
+      scrollWrap.style.border = "none";
+      var table = document.createElement("table");
+      table.className = "rate-tou-table";
+      var thead = "<thead><tr><th></th><th>여름철<br>(6~8월)</th><th>봄·가을철<br>(3~5,9~10월)</th><th>겨울철<br>(11~2월)</th></tr></thead>";
+      var bandDot = { off:"sf", mid:"summer", peak:"winter" };
+      var bodyRows = ["off","mid","peak"].map(function(band){
+        var cells = ["summer","sf","winter"].map(function(season){
+          return "<td><input type='number' step='0.1' data-band='"+band+"' data-season='"+season+"' value='"+plan[band][season]+"'></td>";
+        }).join("");
+        return "<tr><td><span class='season-dot "+bandDot[band]+"'></span>"+BAND_LABEL[band]+"</td>"+cells+"</tr>";
+      }).join("");
+      table.innerHTML = thead + "<tbody>" + bodyRows + "</tbody>";
+      scrollWrap.appendChild(table);
+      els.rateEditor.appendChild(scrollWrap);
+      table.querySelectorAll("input[data-band]").forEach(function(inp){
+        inp.addEventListener("input", function(){
+          var v = parseFloat(inp.value);
+          if(isNaN(v)) return;
+          draft[inp.dataset.band] = draft[inp.dataset.band] || {};
+          draft[inp.dataset.band][inp.dataset.season] = v;
+          setDirty(true);
+        });
+      });
+    }
+  }
+
+  function loadPlanIntoFields(){
+    var p = RATE_PLANS[selectedIndex];
+    draft = {};
+    setDirty(false);
+    els.rateBase.value = p.base;
+    buildRateEditor();
+  }
+
+  function saveDraft(){
+    if(!dirty) return;
+    var plan = RATE_PLANS[selectedIndex];
+    Object.keys(draft).forEach(function(k){
+      if(k === "off" || k === "mid" || k === "peak"){
+        plan[k] = Object.assign({}, plan[k], draft[k]);
+      } else {
+        plan[k] = draft[k];
+      }
+    });
+    draft = {};
+    setDirty(false);
+    buildPlanTable();
+    recompute();
+    flashSaved();
+    saveRatePlansToCloud();
+  }
+
+  function flashSaved(){
+    els.saveBtn.textContent = "✅";
+    setTimeout(function(){ els.saveBtn.textContent = "💾"; }, 900);
+  }
+
+  // ---------- 한전 사이트 붙여넣기로 요금표 갱신 ----------
+  function categoryList(){
+    var cats = [];
+    RATE_PLANS.forEach(function(p){ if(cats.indexOf(p.cat) === -1) cats.push(p.cat); });
+    return cats;
+  }
+
+  function buildPasteCategoryOptions(){
+    els.pasteCategory.innerHTML = "";
+    categoryList().forEach(function(cat){
+      var opt = document.createElement("option");
+      opt.value = cat;
+      var group = RATE_PLANS.filter(function(p){ return p.cat === cat; });
+      var types = group.reduce(function(list, p){
+        var lbl = planTypeLabel(p);
+        if(list.indexOf(lbl) === -1) list.push(lbl);
+        return list;
+      }, []);
+      opt.textContent = cat + " (" + group.length + "개 · " + types.join("+") + ")";
+      els.pasteCategory.appendChild(opt);
+    });
+    initSearchableSelect(els.pasteCategory, "카테고리 검색 (예: 산업용, 교육용...)");
+  }
+
+  // 한전 사이트에서 표를 통째로 드래그選択→복사하면 브라우저가 각 셀을 탭(\t),
+  // 각 행을 줄바꿈으로 구분한 텍스트를 클립보드에 담습니다. "타 종별을 제외..." 같은
+  // 설명문, "여름철(6~8월)" 같은 헤더에도 숫자가 섞여 있으므로, 줄 전체를 훑는 대신
+  // "셀 하나가 통째로 숫자 형식과 완전히 일치하는지"만 검사해 안내문·헤더의 숫자를
+  // 오인식하지 않도록 합니다.
+  var CELL_NUMBER_RE = /^-?\d{1,3}(,\d{3})*(\.\d+)?$|^-?\d+(\.\d+)?$/;
+
+  function parsePastedNumbers(text){
+    var nums = [];
+    text.split(/\r\n|\r|\n/).forEach(function(line){
+      if(!line.trim()) return;
+      // 셀 구분자: 탭이 기본, 탭이 전혀 없는 줄은 연속 공백(2칸 이상)으로 대체 시도
+      var cells = line.indexOf("\t") !== -1 ? line.split("\t") : line.split(/\s{2,}/);
+      cells.forEach(function(cell){
+        var c = cell.trim().replace(/^[₩\s]+|[원]+$/g, "");
+        if(c && CELL_NUMBER_RE.test(c)){
+          var n = parseFloat(c.replace(/,/g, ""));
+          if(!isNaN(n)) nums.push(n);
+        }
+      });
+    });
+    return nums;
+  }
+
+  // 카테고리 하나에 지정가(flat, 숫자 4개: 기본요금+3계절)와 선택요금제(tou, 숫자
+  // 10개: 기본요금+3시간대×3계절)가 섞여 있을 수 있어(예: 일반용 전력(갑)Ⅱ의
+  // 선택Ⅰ·Ⅱ는 tou, 선택Ⅲ·Ⅳ는 flat), 그룹 전체에 하나의 perPlan을 적용하지 않고
+  // 각 요금제(plan)별로 필요한 개수를 더해 기대 총량을 계산합니다.
+  function planNeedsCount(plan){ return plan.type === "flat" ? 4 : 10; }
+
+  function applyPasteToCategory(catName, text){
+    var group = RATE_PLANS.filter(function(p){ return p.cat === catName; });
+    if(!group.length){ return { ok:false, msg:"카테고리를 찾을 수 없습니다." }; }
+    var expected = group.reduce(function(sum, p){ return sum + planNeedsCount(p); }, 0);
+    var nums = parsePastedNumbers(text);
+    if(!nums.length){
+      return { ok:false, msg:"붙여넣은 내용에서 숫자를 찾지 못했습니다. 표를 드래그로 전체 선택(설명 문구 포함해도 무방)해 복사한 뒤 다시 붙여넣어 보세요." };
+    }
+    if(nums.length !== expected){
+      return { ok:false, msg:"숫자 " + expected + "개가 필요한데 " + nums.length + "개를 찾았습니다. 이 카테고리(" + catName + ")의 표 전체(모든 전압·선택 구간)를 한 번에 선택해 복사했는지 확인해주세요." };
+    }
+    var idx = 0;
+    group.forEach(function(plan){
+      plan.base = nums[idx++];
+      if(plan.type === "flat"){
+        plan.summer = nums[idx++];
+        plan.sf = nums[idx++];
+        plan.winter = nums[idx++];
+      } else {
+        ["off","mid","peak"].forEach(function(band){
+          plan[band] = { summer:nums[idx++], sf:nums[idx++], winter:nums[idx++] };
+        });
+      }
+    });
+    return { ok:true, msg: catName + " 요금제 " + group.length + "개를 갱신했습니다." };
+  }
+
+  function handlePasteApply(){
+    var cat = els.pasteCategory.value;
+    var text = els.pasteArea.value;
+    var result = applyPasteToCategory(cat, text);
+    els.pasteStatus.textContent = result.msg;
+    els.pasteStatus.className = "paste-status " + (result.ok ? "ok" : "err");
+    if(result.ok){
+      buildPlanTable();
+      if(RATE_PLANS[selectedIndex].cat === cat){
+        loadPlanIntoFields();
+      }
+      recompute();
+      els.pasteArea.value = "";
+      saveRatePlansToCloud();
+    }
+  }
+
+  var planTableSearchTerm = "";
+  var planTableSortDir = null; // null=원본 순서, "asc", "desc"
+
+  function setSelectValue(selectEl, value){
+    selectEl.value = value;
+    var wrap = selectEl.nextElementSibling;
+    if(wrap && wrap.classList && wrap.classList.contains("ss-wrap") && wrap._syncDisplay){
+      wrap._syncDisplay();
+    }
+  }
+
+  function buildPlanTable(){
+    var tbody = document.querySelector("#planTable tbody");
+    tbody.innerHTML = "";
+    var rows = RATE_PLANS.map(function(p,i){ return { p:p, i:i }; });
+    if(planTableSearchTerm){
+      var q = planTableSearchTerm.toLowerCase();
+      rows = rows.filter(function(r){ return r.p.cat.toLowerCase().indexOf(q) !== -1; });
+    }
+    if(planTableSortDir){
+      rows.sort(function(a,b){
+        var c = a.p.cat.localeCompare(b.p.cat, "ko");
+        return planTableSortDir === "asc" ? c : -c;
+      });
+    }
+    if(!rows.length){
+      tbody.innerHTML = "<tr><td colspan='8' style='text-align:center;color:var(--ink-faint);padding:24px;'>일치하는 요금제가 없습니다.</td></tr>";
+      return;
+    }
+    rows.forEach(function(r){
+      var p = r.p, i = r.i;
+      var tr = document.createElement("tr");
+      if(i===selectedIndex) tr.className = "active-plan";
+      tr.title = "클릭하면 아래 '붙여넣기' 카테고리가 이 요금제(" + p.cat + ")로 바뀝니다.";
+      tr.style.cursor = "pointer";
+      tr.innerHTML =
+        "<td>"+p.cat+"</td><td>"+p.volt+"</td><td>"+p.tier+"</td><td>"+planTypeLabel(p)+"</td>" +
+        "<td>"+fmtInt(p.base)+"</td>" +
+        "<td>"+planSeasonCell(p,"summer")+"</td>" +
+        "<td>"+planSeasonCell(p,"sf")+"</td>" +
+        "<td>"+planSeasonCell(p,"winter")+"</td>";
+      tr.addEventListener("click", function(){
+        setSelectValue(els.pasteCategory, p.cat);
+        els.pasteArea.focus();
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updatePlanTableSortIcon(){
+    els.planTableSortIcon.textContent = planTableSortDir === "asc" ? "▲" : planTableSortDir === "desc" ? "▼" : "⇅";
+  }
+
+  function buildPatternTable(){
+    var table = document.getElementById("patternTable");
+    var capacity = parseFloat(els.capacity.value) || 0;
+    var capacityLabel = capacity.toLocaleString("ko-KR",{maximumFractionDigits:3});
+    document.getElementById("patternCapacityLabel").textContent = capacityLabel;
+    var thead = "<thead><tr><th>월</th>" + HOURS.map(function(h){return "<th>"+h+"</th>";}).join("") + "</tr></thead>";
+    var rows = GEN_PATTERN.map(function(row,mi){
+      return "<tr><td>"+MONTHS[mi]+"</td>" + row.map(function(v){
+        return "<td>"+ (v===0?"–":fmt1(v*capacity)) +"</td>";
+      }).join("") + "</tr>";
+    }).join("");
+    table.innerHTML = thead + "<tbody>"+rows+"</tbody>";
+  }
+
+  function updateSeasonToggleLabel(){
+    els.seasonModeLabel.textContent = els.useSeasonal.checked ? "계절별 단가 적용" : "겨울철 단가 적용";
+  }
+
+  function recompute(){
+    var plan = RATE_PLANS[selectedIndex];
+    var capacity = parseFloat(els.capacity.value)||0;
+    var climate = parseFloat(els.climate.value)||0;
+    var fuel = parseFloat(els.fuelAdj.value)||0;
+    var fundPct = parseFloat(els.fundPct.value)||0;
+    var vatPct = parseFloat(els.vatPct.value)||0;
+    var useSeasonal = els.useSeasonal.checked;
+
+    var totalGen = 0, totalSavings = 0, totalHoursSum = 0;
+    var monthRows = [];
+
+    for(var m=0;m<12;m++){
+      var seasonLabel = SEASON_OF_MONTH[m];
+      var seasonKey = SEASON_KEY[seasonLabel];
+      // 토글이 꺼져 있으면 원본 엑셀과 동일하게 "겨울철 기준"을 연중 일괄 적용(고압 선택요금제는
+      // 겨울철의 시간대 구분·단가를 그대로 사용). 켜져 있으면 발전월의 실제 계절을 적용.
+      var effectiveSeasonKey = useSeasonal ? seasonKey : "winter";
+
+      var monthGen = 0, monthAmount = 0, monthSavingPre = 0;
+      for(var h=0;h<14;h++){
+        var gen = GEN_PATTERN[m][h] * capacity * DAYS[m];
+        monthGen += gen;
+        var price;
+        if(plan.type === "flat"){
+          price = plan[effectiveSeasonKey];
+        } else {
+          var band = TOU_BAND[effectiveSeasonKey][h];
+          price = plan[band][effectiveSeasonKey];
+        }
+        var amount = Math.round(gen*price);
+        monthAmount += amount;
+        var adj = (amount + gen*(climate+fuel)) * (1+fundPct/100);
+        monthSavingPre += adj;
+      }
+      var monthSaving = monthSavingPre * (1+vatPct/100);
+
+      totalGen += monthGen;
+      totalSavings += monthSaving;
+      totalHoursSum += GEN_PATTERN[m].reduce(function(a,b){return a+b;},0) * DAYS[m];
+
+      monthRows.push({
+        month: MONTHS[m], season: seasonLabel, days: DAYS[m],
+        gen: monthGen, avgPrice: monthGen>0 ? monthAmount/monthGen : 0,
+        amount: monthAmount, saving: monthSaving
+      });
+    }
+
+    var unitPrice = totalGen>0 ? totalSavings/totalGen : 0;
+    var daysInYear = DAYS.reduce(function(a,b){return a+b;},0);
+    var avgHoursPerDay = (totalGen>0 && capacity>0) ? (totalGen/capacity)/daysInYear : 0;
+
+    // hero
+    els.heroUnitPrice.innerHTML = fmt1(unitPrice) + " <small>원/kWh</small>";
+    var modeSuffix = useSeasonal
+      ? " · 계절별 단가 적용"
+      : ' · <span class="tooltip" tabindex="0" data-tooltip="업로드하신 원본 엑셀과 동일한 방식입니다. 발전월과 상관없이 겨울철 기준 단가를 연중 동일하게 적용합니다.">겨울철 단가 일괄 적용</span>';
+    modeSuffix += (plan.type === "tou" ? " · 시간대별(TOU) 자동 적용" : "");
+    els.heroPlanName.innerHTML = planLabel(plan) + modeSuffix;
+    els.statGen.textContent = fmtInt(totalGen) + " kWh";
+    els.statSavings.textContent = fmtInt(totalSavings) + " 원";
+    els.statCapacity.textContent = fmt1(capacity) + " kW";
+    els.statHours.textContent = avgHoursPerDay.toFixed(2) + " 시간/일";
+
+    // monthly table
+    var tbody = document.querySelector("#monthlyTable tbody");
+    tbody.innerHTML = "";
+    monthRows.forEach(function(r){
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td>"+r.month+"</td>" +
+        "<td>"+r.season+"</td>" +
+        "<td>"+r.days+"</td>" +
+        "<td>"+fmtInt(r.gen)+"</td>" +
+        "<td>"+fmt1(r.avgPrice)+"</td>" +
+        "<td>"+fmtInt(r.amount)+"</td>" +
+        "<td>"+fmtInt(r.saving)+"</td>";
+      tbody.appendChild(tr);
+    });
+    var totalAmount = monthRows.reduce(function(a,r){return a+r.amount;},0);
+    var totalTr = document.createElement("tr");
+    totalTr.className = "total";
+    totalTr.innerHTML =
+      "<td>합계</td><td>–</td><td>"+daysInYear+"</td>" +
+      "<td>"+fmtInt(totalGen)+"</td>" +
+      "<td>"+(totalGen>0 ? fmt1(totalAmount/totalGen) : "–")+"</td>" +
+      "<td>"+fmtInt(totalAmount)+"</td>" +
+      "<td>"+fmtInt(totalSavings)+"</td>";
+    tbody.appendChild(totalTr);
+  }
+
+  // ---------- 왼쪽 드로어(요금제 전체표) ----------
+  function openDrawer(){
+    els.planDrawer.classList.add("open");
+    els.planDrawer.setAttribute("aria-hidden", "false");
+    els.drawerBackdrop.classList.add("open");
+    els.pageTitleTrigger.classList.add("open");
+    els.pageTitleTrigger.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+  }
+  function closeDrawer(){
+    els.planDrawer.classList.remove("open");
+    els.planDrawer.setAttribute("aria-hidden", "true");
+    els.drawerBackdrop.classList.remove("open");
+    els.pageTitleTrigger.classList.remove("open");
+    els.pageTitleTrigger.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
+  }
+  function toggleDrawer(){
+    if(els.planDrawer.classList.contains("open")){ closeDrawer(); } else { openDrawer(); }
+  }
+
+  // ---------- 드로어 너비를 마우스로 드래그 조절 (봄·여름·가을·겨울 요금이 다 보이도록) ----------
+  var DRAWER_MIN_W = 360;
+  var DRAWER_MAX_W = 1100;
+  function initDrawerResize(){
+    var handle = els.drawerResizeHandle;
+    if(!handle) return;
+    var dragging = false, startX = 0, startWidth = 0;
+
+    function onMove(e){
+      if(!dragging) return;
+      var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      var dx = clientX - startX;
+      var maxAllowed = Math.min(DRAWER_MAX_W, window.innerWidth * 0.96);
+      var newWidth = Math.min(maxAllowed, Math.max(DRAWER_MIN_W, startWidth + dx));
+      els.planDrawer.style.setProperty("--drawer-w", newWidth + "px");
+    }
+    function onUp(){
+      if(!dragging) return;
+      dragging = false;
+      els.planDrawer.classList.remove("resizing");
+      handle.classList.remove("active");
+      document.body.classList.remove("drawer-resizing");
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    }
+    handle.addEventListener("pointerdown", function(e){
+      dragging = true;
+      startX = e.clientX;
+      startWidth = els.planDrawer.getBoundingClientRect().width;
+      els.planDrawer.classList.add("resizing");
+      handle.classList.add("active");
+      document.body.classList.add("drawer-resizing");
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      e.preventDefault();
+    });
+  }
+
+  function bindEvents(){
+    els.planSelect.addEventListener("change", function(){
+      if(dirty && !window.confirm("저장하지 않은 변경사항이 있습니다. 저장하지 않고 다른 요금제로 이동할까요?")){
+        els.planSelect.value = selectedIndex;
+        return;
+      }
+      selectedIndex = +els.planSelect.value;
+      loadPlanIntoFields();
+      buildPlanTable();
+      recompute();
+    });
+    els.rateBase.addEventListener("input", function(){
+      var v = parseFloat(els.rateBase.value);
+      if(!isNaN(v)){ draft.base = v; setDirty(true); }
+    });
+    els.saveBtn.addEventListener("click", function(){
+      saveDraft();
+      toggleColorPopover();
+    });
+    ["capacity","climate","fuelAdj","fundPct","vatPct"].forEach(function(id){
+      els[id].addEventListener("input", recompute);
+    });
+    els.capacity.addEventListener("input", buildPatternTable);
+    els.useSeasonal.addEventListener("change", function(){
+      updateSeasonToggleLabel();
+      recompute();
+    });
+
+    els.pageTitleTrigger.addEventListener("click", toggleDrawer);
+    els.pageTitleTrigger.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); toggleDrawer(); }
+    });
+    els.drawerClose.addEventListener("click", closeDrawer);
+    els.drawerBackdrop.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", function(e){
+      if(e.key === "Escape") closeDrawer();
+    });
+
+    els.pasteApplyBtn.addEventListener("click", handlePasteApply);
+
+    els.planTableSearch.addEventListener("input", function(){
+      planTableSearchTerm = els.planTableSearch.value;
+      buildPlanTable();
+    });
+    els.planTableSortHeader.addEventListener("click", function(){
+      planTableSortDir = planTableSortDir === "asc" ? "desc" : planTableSortDir === "desc" ? null : "asc";
+      updatePlanTableSortIcon();
+      buildPlanTable();
+    });
+
+    // 인쇄 시 접혀 있는 상세 표(시간대별 발전 패턴 등)도 화면과 동일하게 모두 펼쳐서 인쇄되도록 함.
+    // 인쇄가 끝나면 사용자가 화면에서 보던 펼침 상태로 되돌림.
+    var closedDetailsBeforePrint = [];
+    window.addEventListener("beforeprint", function(){
+      closedDetailsBeforePrint = Array.prototype.filter.call(
+        document.querySelectorAll("details.card"),
+        function(d){ return !d.open; }
+      );
+      closedDetailsBeforePrint.forEach(function(d){ d.open = true; });
+    });
+    window.addEventListener("afterprint", function(){
+      closedDetailsBeforePrint.forEach(function(d){ d.open = false; });
+      closedDetailsBeforePrint = [];
+    });
+  }
+
+  /* ---------- theme accent color (제안서용 서식 색상) ---------- */
+  var THEME_COLORS = [
+    { id:"navy",     name:"네이비",   accent:"#1D4E89", soft:"#DCE6F2", ink:"#14315C" },
+    { id:"charcoal", name:"차콜",     accent:"#3B4045", soft:"#E4E6E8", ink:"#1F2225" },
+    { id:"lightgray", name:"연회색",   accent:"#8A8F94", soft:"#EDEEEF", ink:"#3F4347" },
+    { id:"amber",    name:"기본",     accent:"#C6841A", soft:"#FBEAC8", ink:"#5C3B0A" },
+    { id:"green",    name:"그린",     accent:"#00693E", soft:"#D9EFE3", ink:"#00432A" }
+  ];
+
+  function applyThemeColor(themeId, persist){
+    var t = THEME_COLORS.filter(function(c){ return c.id === themeId; })[0] || THEME_COLORS[3];
+    var root = document.documentElement;
+    root.style.setProperty("--accent", t.accent);
+    root.style.setProperty("--accent-soft", t.soft);
+    root.style.setProperty("--accent-ink", t.ink);
+    root.style.setProperty("--accent2", t.accent);
+    root.style.setProperty("--accent2-soft", t.soft);
+    if(persist){
+      try{ localStorage.setItem("themeAccentId", t.id); }catch(e){}
+    }
+    Array.prototype.forEach.call(document.querySelectorAll(".color-swatch"), function(btn){
+      btn.classList.toggle("selected", btn.getAttribute("data-theme-id") === t.id);
+    });
+  }
+
+  function buildColorSwatches(){
+    els.colorSwatchRow.innerHTML = THEME_COLORS.map(function(t){
+      return '<div class="color-swatch-item">' +
+        '<button type="button" class="color-swatch" data-theme-id="'+t.id+'" style="background:'+t.accent+';" title="'+t.name+'" aria-label="'+t.name+'">' +
+          '<span class="check">\u2713</span>' +
+        '</button>' +
+        '<span class="color-swatch-label">'+t.name+'</span>' +
+      '</div>';
+    }).join("");
+    Array.prototype.forEach.call(els.colorSwatchRow.querySelectorAll(".color-swatch"), function(btn){
+      btn.addEventListener("click", function(){
+        applyThemeColor(btn.getAttribute("data-theme-id"), true);
+        closeColorPopover();
+      });
+    });
+  }
+
+  function handleOutsideColorClick(e){
+    if(!e.target.closest(".save-emoji-wrap")) closeColorPopover();
+  }
+  function handleColorPopoverKeydown(e){
+    if(e.key === "Escape") closeColorPopover();
+  }
+  function openColorPopover(){
+    els.colorPopover.classList.add("open");
+    els.saveBtn.setAttribute("aria-expanded","true");
+    document.addEventListener("click", handleOutsideColorClick, true);
+    document.addEventListener("keydown", handleColorPopoverKeydown);
+  }
+  function closeColorPopover(){
+    els.colorPopover.classList.remove("open");
+    els.saveBtn.setAttribute("aria-expanded","false");
+    document.removeEventListener("click", handleOutsideColorClick, true);
+    document.removeEventListener("keydown", handleColorPopoverKeydown);
+  }
+  function toggleColorPopover(){
+    if(els.colorPopover.classList.contains("open")) closeColorPopover();
+    else openColorPopover();
+  }
+
+  buildPlanSelect();
+  initPlanDualPicker();
+  loadPlanIntoFields();
+  buildPlanTable();
+  buildPatternTable();
+  buildPasteCategoryOptions();
+  bindEvents();
+  initDrawerResize();
+  updateSeasonToggleLabel();
+  buildColorSwatches();
+  (function initThemeColor(){
+    var saved = null;
+    try{ saved = localStorage.getItem("themeAccentId"); }catch(e){}
+    applyThemeColor(saved || "amber", false);
+  })();
+  initCloudSync();
+  recompute();
+})();
+</script>
+</body>
+</html>
